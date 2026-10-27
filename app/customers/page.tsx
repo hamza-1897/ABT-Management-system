@@ -134,9 +134,8 @@ export default function CustomersPage() {
     }
   };
 
-  // Toggle Active / Inactive Status
 // Toggle Active / Inactive Status
-  const toggleCustomerStatus = async (id: any, currentStatus: boolean) => {
+  const toggleCustomerStatus = async (id: string, currentStatus: boolean) => {
     const newStatus = currentStatus === false ? true : false;
     const confirmMsg = newStatus 
       ? 'Kya aap is customer ko Active karna chahte hain?' 
