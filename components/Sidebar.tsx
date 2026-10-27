@@ -7,7 +7,7 @@ const NAV_ITEMS = [
   { label: 'Dashboard', href: '/', icon: '📊' },
   { label: 'Customers', href: '/customers', icon: '👥' },
   { label: 'Suppliers', href: '/suppliers', icon: '🏭' },
-  { label: 'Chart of Accounts', href: '/accounts', icon: '🏦' },
+  { label: 'Products', href: '/products', icon: '📦' },
   { label: 'Sales & Dispatch', href: '/sales', icon: '🚚' },
   { label: 'Purchases & Stock', href: '/purchases', icon: '📦' },
   { label: 'Vouchers & Cashbook', href: '/vouchers', icon: '📖' },
