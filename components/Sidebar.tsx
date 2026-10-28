@@ -7,8 +7,8 @@ import { usePathname } from 'next/navigation';
 export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: (val: boolean) => void }) {
   const pathname = usePathname();
 
-  // Collapsible dropdown states for different categories
-  const [openSection, setOpenSection] = useState<string | null>('accounts'); // Default open section
+  // Collapsible sections state
+  const [openSection, setOpenSection] = useState<string | null>('management');
 
   const toggleSection = (section: string) => {
     setOpenSection(openSection === section ? null : section);
@@ -65,63 +65,41 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
             <span>Dashboard</span>
           </Link>
 
-          {/* Customers */}
-          <Link
-            href="/customers"
-            onClick={() => setIsOpen(false)}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-              pathname.startsWith('/customers') ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-            <span>Customers</span>
-          </Link>
-
-          {/* Suppliers */}
-          <Link
-            href="/suppliers"
-            onClick={() => setIsOpen(false)}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-              pathname.startsWith('/suppliers') ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-            <span>Suppliers</span>
-          </Link>
-
-          {/* Products */}
-          <Link
-            href="/products"
-            onClick={() => setIsOpen(false)}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-              pathname.startsWith('/products') ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-            <span>Products</span>
-          </Link>
-
-          {/* ACCOUNTS & BANKING SETUP (Collapsible Category like your screenshot) */}
+          {/* MANAGEMENT & SETUP DRAWER (Saare create, edit, manage yahan honge) */}
           <div>
             <button
-              onClick={() => toggleSection('accounts')}
+              onClick={() => toggleSection('management')}
               className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors cursor-pointer"
             >
               <span className="flex items-center gap-3">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                <span>Accounts Reports & Setup</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <span>Management & Setup</span>
               </span>
-              <span className="text-xs text-slate-500">{openSection === 'accounts' ? '▲' : '▼'}</span>
+              <span className="text-xs text-slate-500">{openSection === 'management' ? '▲' : '▼'}</span>
             </button>
             
-            {openSection === 'accounts' && (
+            {openSection === 'management' && (
               <div className="pl-7 mt-1 space-y-1 border-l-2 border-slate-800 ml-4">
                 <Link
-                  href="/accounts/cash"
+                  href="/customers"
                   onClick={() => setIsOpen(false)}
-                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/accounts/cash' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname.startsWith('/customers') ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
                 >
-                  Petty Cash Balances
+                  Customer Management
+                </Link>
+                <Link
+                  href="/suppliers"
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname.startsWith('/suppliers') ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                >
+                  Supplier Management
+                </Link>
+                <Link
+                  href="/products"
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname.startsWith('/products') ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                >
+                  Product Setup
                 </Link>
                 <Link
                   href="/accounts/cash/manage"
@@ -129,13 +107,6 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
                   className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/accounts/cash/manage' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
                 >
                   Manage Cash Drawers
-                </Link>
-                <Link
-                  href="/accounts/banks"
-                  onClick={() => setIsOpen(false)}
-                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/accounts/banks' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
-                >
-                  Bank Balances
                 </Link>
                 <Link
                   href="/accounts/banks/manage"
@@ -195,7 +166,7 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
             )}
           </div>
 
-          {/* REPORTS */}
+          {/* REPORTS & VIEW BALANCES */}
           <div>
             <button
               onClick={() => toggleSection('reports')}
@@ -203,13 +174,27 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
             >
               <span className="flex items-center gap-3">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                <span>Reports & Analytics</span>
+                <span>Reports & Balances</span>
               </span>
               <span className="text-xs text-slate-500">{openSection === 'reports' ? '▲' : '▼'}</span>
             </button>
             
             {openSection === 'reports' && (
               <div className="pl-7 mt-1 space-y-1 border-l-2 border-slate-800 ml-4">
+                <Link
+                  href="/accounts/cash"
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/accounts/cash' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                >
+                  Petty Cash Balances
+                </Link>
+                <Link
+                  href="/accounts/banks"
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/accounts/banks' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                >
+                  Bank Balances
+                </Link>
                 <Link
                   href="/reports/accounts"
                   onClick={() => setIsOpen(false)}
