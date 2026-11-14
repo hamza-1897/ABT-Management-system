@@ -119,6 +119,49 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
             )}
           </div>
 
+
+            <div>
+            <button
+              onClick={() => toggleSection('purchases')}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors cursor-pointer"
+            >
+              <span className="flex items-center gap-3">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                <span>Purchase</span>
+              </span>
+              <span className="text-xs text-slate-500">{openSection === 'purchases' ? '▲' : '▼'}</span>
+            </button>
+            
+            {openSection === 'purchases' && (
+              <div className="pl-7 mt-1 space-y-1 border-l-2 border-slate-800 ml-4">
+                <Link
+                  href="/products/stock"
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/products/stock' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                >
+                  Stock
+                </Link>
+                <Link
+                  href="/purchases/new"
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/purchases/new' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                >
+                  Product Purchase
+                </Link>
+                <Link
+                  href="/transfers/cash-to-bank"
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/transfers/cash-to-bank' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                >
+                  Purchase Payments
+                </Link>
+                
+              </div>
+            )}
+          </div>
+
+
+
           {/* FINANCE & TRANSFERS SETUP */}
           <div>
             <button
@@ -166,6 +209,7 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
             )}
           </div>
 
+
           {/* REPORTS & VIEW BALANCES */}
           <div>
             <button
@@ -182,26 +226,13 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
             {openSection === 'reports' && (
               <div className="pl-7 mt-1 space-y-1 border-l-2 border-slate-800 ml-4">
                 <Link
-                  href="/accounts/cash"
+                  href="/suppliers/ledger"
                   onClick={() => setIsOpen(false)}
-                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/accounts/cash' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/suppliers/ledger' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
                 >
-                  Petty Cash Balances
+                  Supplier Ledger
                 </Link>
-                <Link
-                  href="/accounts/banks"
-                  onClick={() => setIsOpen(false)}
-                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/accounts/banks' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
-                >
-                  Bank Balances
-                </Link>
-                <Link
-                  href="/reports/accounts"
-                  onClick={() => setIsOpen(false)}
-                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/reports/accounts' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
-                >
-                  Closing Balances Report
-                </Link>
+                
               </div>
             )}
           </div>
