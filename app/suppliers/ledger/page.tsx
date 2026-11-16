@@ -26,27 +26,22 @@ export default function SupplierLedgerPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
   const [supplierName, setSupplierName] = useState("");
-  
-  // Month State (Default current year-month, e.g. "2026-11")
-// Shuru mein empty rakhein
-const [selectedMonth, setSelectedMonth] = useState("");  
+  const [selectedMonth, setSelectedMonth] = useState("");
   const [allLedgerEntries, setAllLedgerEntries] = useState<LedgerEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
- useEffect(() => {
-  // Page load hone par current month set ho jayega (e.g. "2026-11")
-  setSelectedMonth(new Date().toISOString().slice(0, 7));
+  useEffect(() => {
+    setSelectedMonth(new Date().toISOString().slice(0, 7));
 
-  const fetchSuppliers = async () => {
-    const { data, error } = await supabase.from("suppliers").select("id, name").order("name");
-    if (data) setSuppliers(data);
-    if (error) console.error("Error fetching suppliers:", error.message);
-  };
-  fetchSuppliers();
-}, []);
+    const fetchSuppliers = async () => {
+      const { data, error } = await supabase.from("suppliers").select("id, name").order("name");
+      if (data) setSuppliers(data);
+      if (error) console.error("Error fetching suppliers:", error.message);
+    };
+    fetchSuppliers();
+  }, []);
 
-  // Supplier select hone par saari lifetime entries fetch karo taake opening balance theek nikle
   const fetchLedger = async (supplierId: string) => {
     if (!supplierId) {
       setAllLedgerEntries([]);
@@ -77,11 +72,18 @@ const [selectedMonth, setSelectedMonth] = useState("");
     fetchLedger(selectedSupplierId);
   }, [selectedSupplierId, suppliers]);
 
-  // 1. Calculate Opening Balance and Filter Entries for Selected Month
+  // Helper function: Description se Tons extract karne ke liye (e.g. "(20.00 Tons @ 24300)" -> 20)
+  const extractTons = (description: string): number => {
+    if (!description) return 0;
+    const match = description.match(/([\d.]+)\s*Tons/i);
+    return match ? parseFloat(match[1]) : 0;
+  };
+
+  // 1. Opening Balance & Month Filter
   let openingBalance = 0;
   let filteredEntries: LedgerEntry[] = [];
 
-  if (selectedMonth === "ALL") {
+  if (selectedMonth === "ALL" || !selectedMonth) {
     filteredEntries = allLedgerEntries;
     openingBalance = 0;
   } else {
@@ -89,21 +91,17 @@ const [selectedMonth, setSelectedMonth] = useState("");
     
     allLedgerEntries.forEach((entry) => {
       const [entryYear, entryMonth] = entry.transaction_date.split("-");
-      
-      // Agar transaction selected month se pehle ki hai, toh opening balance mein add hogi
       if (entryYear < selYear || (entryYear === selYear && entryMonth < selMonth)) {
         const debit = Number(entry.debit) || 0;
         const credit = Number(entry.credit) || 0;
         openingBalance = openingBalance + credit - debit;
-      } 
-      // Agar transaction selected month ki hai, toh table ke liye rakho
-      else if (entryYear === selYear && entryMonth === selMonth) {
+      } else if (entryYear === selYear && entryMonth === selMonth) {
         filteredEntries.push(entry);
       }
     });
   }
 
-  // Search filter
+  // Search Filter
   const searchedEntries = filteredEntries.filter(
     (entry) =>
       (entry.vehicle_number && entry.vehicle_number.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -111,26 +109,28 @@ const [selectedMonth, setSelectedMonth] = useState("");
       (entry.description && entry.description.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  // 2. Running Balance Calculation starting from Opening Balance
+  // 2. Running Balance & Tons Calculation
   let runningBalance = openingBalance;
   const entriesWithBalance = searchedEntries.map((entry) => {
     const debit = Number(entry.debit) || 0;
     const credit = Number(entry.credit) || 0;
+    const tons = extractTons(entry.description);
     runningBalance = runningBalance + credit - debit;
     return {
       ...entry,
+      tons,
       balance: runningBalance,
     };
   });
 
+  const totalTons = entriesWithBalance.reduce((sum, e) => sum + e.tons, 0);
   const totalDebit = searchedEntries.reduce((sum, e) => sum + (Number(e.debit) || 0), 0);
   const totalCredit = searchedEntries.reduce((sum, e) => sum + (Number(e.credit) || 0), 0);
 
-  // Professional jsPDF Download Function
+  // Professional jsPDF Download Function with Tons Total
   const downloadPDF = () => {
     const doc = new jsPDF();
 
-    // Header Info
     doc.setFontSize(16);
     doc.text("ABU BAKR TRADERS", 14, 15);
     doc.setFontSize(12);
@@ -138,16 +138,16 @@ const [selectedMonth, setSelectedMonth] = useState("");
     doc.setFontSize(10);
     doc.text(`Period: ${selectedMonth === "ALL" ? "All Time" : selectedMonth} | Generated On: ${new Date().toLocaleDateString()}`, 14, 28);
 
-    const tableColumn = ["Date", "Invoice No", "Vehicle No", "Description", "Debit (Paid)", "Credit (Purchase)", "Balance"];
+    const tableColumn = ["Date", "Invoice No", "Vehicle No", "Description", "Tons", "Debit (Paid)", "Credit (Purchase)", "Balance"];
     const tableRows: any[] = [];
 
-    // Opening Balance Row in PDF if not ALL
-    if (selectedMonth !== "ALL") {
+    if (selectedMonth !== "ALL" && selectedMonth !== "") {
       tableRows.push([
         "Opening Balance",
         "-",
         "-",
         "Brought forward from previous months",
+        "-",
         "-",
         "-",
         openingBalance.toLocaleString(),
@@ -160,6 +160,7 @@ const [selectedMonth, setSelectedMonth] = useState("");
         entry.invoice_number || "-",
         entry.vehicle_number || "-",
         entry.description,
+        entry.tons > 0 ? entry.tons.toFixed(2) : "-",
         entry.debit > 0 ? Number(entry.debit).toLocaleString() : "-",
         entry.credit > 0 ? Number(entry.credit).toLocaleString() : "-",
         entry.balance.toLocaleString(),
@@ -167,12 +168,13 @@ const [selectedMonth, setSelectedMonth] = useState("");
       tableRows.push(rowData);
     });
 
-    // Total Row
+    // Total Row with Tons
     tableRows.push([
       "CLOSING TOTAL",
       "",
       "",
       "",
+      `${totalTons.toFixed(2)} T`,
       totalDebit.toLocaleString(),
       totalCredit.toLocaleString(),
       runningBalance.toLocaleString(),
@@ -187,7 +189,7 @@ const [selectedMonth, setSelectedMonth] = useState("");
       footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
     });
 
-    doc.save(`${supplierName}_Ledger_${selectedMonth}.pdf`);
+    doc.save(`${supplierName}_Ledger_${selectedMonth || "ALL"}.pdf`);
   };
 
   return (
@@ -196,11 +198,9 @@ const [selectedMonth, setSelectedMonth] = useState("");
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-blue-600" /> Supplier Vehicle-wise Ledger (Month-wise)
+            <BookOpen className="w-6 h-6 text-blue-600" /> Supplier Ledger
           </h1>
-          <p className="text-sm text-slate-500">
-            Track month-wise vehicle purchases with automated opening balance and PDF export.
-          </p>
+         
         </div>
         {selectedSupplierId && (
           <button
@@ -278,6 +278,7 @@ const [selectedMonth, setSelectedMonth] = useState("");
                 <th className="px-4 py-3">Invoice No</th>
                 <th className="px-4 py-3">Vehicle No</th>
                 <th className="px-4 py-3">Description</th>
+                <th className="px-4 py-3 text-right">Tons</th>
                 <th className="px-4 py-3 text-right">Debit (Paid)</th>
                 <th className="px-4 py-3 text-right">Credit (Purchase)</th>
                 <th className="px-4 py-3 text-right">Balance</th>
@@ -286,22 +287,22 @@ const [selectedMonth, setSelectedMonth] = useState("");
             <tbody className="divide-y divide-slate-200">
               {!selectedSupplierId ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-slate-400">
+                  <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
                     Please select a supplier above to view their ledger history.
                   </td>
                 </tr>
               ) : loading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
+                  <td colSpan={8} className="px-4 py-12 text-center text-slate-500">
                     Loading ledger entries...
                   </td>
                 </tr>
               ) : (
                 <>
                   {/* Opening Balance Row */}
-                  {selectedMonth !== "ALL" && (
+                  {selectedMonth !== "ALL" && selectedMonth !== "" && (
                     <tr className="bg-slate-50 font-semibold text-slate-700">
-                      <td colSpan={6} className="px-4 py-3 text-right uppercase text-xs">
+                      <td colSpan={7} className="px-4 py-3 text-right uppercase text-xs">
                         Opening Balance (Brought Forward):
                       </td>
                       <td className="px-4 py-3 text-right text-slate-900">
@@ -312,7 +313,7 @@ const [selectedMonth, setSelectedMonth] = useState("");
 
                   {entriesWithBalance.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                      <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
                         No transactions found for this month.
                       </td>
                     </tr>
@@ -337,6 +338,9 @@ const [selectedMonth, setSelectedMonth] = useState("");
                         <td className="px-4 py-3 text-slate-600 max-w-xs truncate" title={entry.description}>
                           {entry.description}
                         </td>
+                        <td className="px-4 py-3 text-right font-semibold text-slate-700 whitespace-nowrap">
+                          {entry.tons > 0 ? `${entry.tons.toFixed(2)}` : "-"}
+                        </td>
                         <td className="px-4 py-3 text-right text-emerald-600 font-medium">
                           {entry.debit > 0 ? Number(entry.debit).toLocaleString("en-PK", { minimumFractionDigits: 2 }) : "-"}
                         </td>
@@ -357,6 +361,9 @@ const [selectedMonth, setSelectedMonth] = useState("");
                 <tr>
                   <td colSpan={4} className="px-4 py-3 text-right uppercase text-xs tracking-wider">
                     Closing Total:
+                  </td>
+                  <td className="px-4 py-3 text-right text-indigo-700 whitespace-nowrap">
+                    {totalTons.toFixed(2)} Tons
                   </td>
                   <td className="px-4 py-3 text-right text-emerald-700">
                     {totalDebit.toLocaleString("en-PK", { minimumFractionDigits: 2 })}

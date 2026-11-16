@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import {ShoppingCart} from "lucide-react";
+
 
 export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: (val: boolean) => void }) {
   const pathname = usePathname();
 
   // Collapsible sections state
-  const [openSection, setOpenSection] = useState<string | null>('management');
+  const [openSection, setOpenSection] = useState<string | null>('');
 
   const toggleSection = (section: string) => {
     setOpenSection(openSection === section ? null : section);
@@ -119,15 +121,14 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
             )}
           </div>
 
-
+            {/*purchase */}
             <div>
             <button
               onClick={() => toggleSection('purchases')}
               className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors cursor-pointer"
             >
               <span className="flex items-center gap-3">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-                <span>Purchase</span>
+ <ShoppingCart className='w-4 h-4 text-slate-500' />                <span>Purchase</span>
               </span>
               <span className="text-xs text-slate-500">{openSection === 'purchases' ? '▲' : '▼'}</span>
             </button>
@@ -148,6 +149,15 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
                 >
                   Product Purchase
                 </Link>
+
+              <Link
+                  href="/purchases/invoice"
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/purchases/invoice' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                >
+                  Purchase Invoices
+                </Link>
+
                 <Link
                   href="/transfers/cash-to-bank"
                   onClick={() => setIsOpen(false)}
@@ -160,7 +170,31 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
             )}
           </div>
 
-
+            {/*Reverse Transactions */}
+          <div>
+            <button
+              onClick={() => toggleSection('reverse')}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors cursor-pointer"
+            >
+              <span className="flex items-center gap-3">
+                <ShoppingCart className='w-4 h-4 text-slate-500' />
+                <span>Reverse Transactions</span>
+              </span>
+              <span className="text-xs text-slate-500">{openSection === 'reverse' ? '▲' : '▼'}</span>
+            </button>
+            
+            {openSection === 'reverse' && (
+              <div className="pl-7 mt-1 space-y-1 border-l-2 border-slate-800 ml-4">
+                <Link
+                  href="/reversals/purchase"
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/reversals/purchase' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                >
+                  Purchase Reversals
+                </Link>
+              </div>
+            )}
+          </div>
 
           {/* FINANCE & TRANSFERS SETUP */}
           <div>
