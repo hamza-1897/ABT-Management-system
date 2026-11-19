@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Building2, Search, BookOpen, Download, Truck, Calendar } from "lucide-react";
+import { Building2, Search, BookOpen, Download, Truck, Calendar, MapPin } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -16,6 +16,7 @@ interface LedgerEntry {
   transaction_date: string;
   invoice_number: string;
   vehicle_number: string;
+  booking_area?: string;
   description: string;
   debit: number;
   credit: number;
@@ -55,7 +56,7 @@ export default function SupplierLedgerPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("supplier_ledger")
-      .select("id, transaction_date, invoice_number, vehicle_number, description, debit, credit, created_at")
+      .select("id, transaction_date, invoice_number, vehicle_number, booking_area, description, debit, credit, created_at")
       .eq("supplier_id", supplierId)
       .order("transaction_date", { ascending: true })
       .order("created_at", { ascending: true });
@@ -72,14 +73,12 @@ export default function SupplierLedgerPage() {
     fetchLedger(selectedSupplierId);
   }, [selectedSupplierId, suppliers]);
 
-  // Helper function: Description se Tons extract karne ke liye (e.g. "(20.00 Tons @ 24300)" -> 20)
   const extractTons = (description: string): number => {
     if (!description) return 0;
     const match = description.match(/([\d.]+)\s*Tons/i);
     return match ? parseFloat(match[1]) : 0;
   };
 
-  // 1. Opening Balance & Month Filter
   let openingBalance = 0;
   let filteredEntries: LedgerEntry[] = [];
 
@@ -101,15 +100,15 @@ export default function SupplierLedgerPage() {
     });
   }
 
-  // Search Filter
+  // Search Filter (Vehicle, Invoice, Description, ya Booking Area)
   const searchedEntries = filteredEntries.filter(
     (entry) =>
       (entry.vehicle_number && entry.vehicle_number.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (entry.booking_area && entry.booking_area.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (entry.invoice_number && entry.invoice_number.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (entry.description && entry.description.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  // 2. Running Balance & Tons Calculation
   let runningBalance = openingBalance;
   const entriesWithBalance = searchedEntries.map((entry) => {
     const debit = Number(entry.debit) || 0;
@@ -127,23 +126,37 @@ export default function SupplierLedgerPage() {
   const totalDebit = searchedEntries.reduce((sum, e) => sum + (Number(e.debit) || 0), 0);
   const totalCredit = searchedEntries.reduce((sum, e) => sum + (Number(e.credit) || 0), 0);
 
-  // Professional jsPDF Download Function with Tons Total
   const downloadPDF = () => {
-    const doc = new jsPDF();
+    const doc = new jsPDF("landscape"); // Landscape taake Area column ke sath PDF khula aur saaf aaye
 
     doc.setFontSize(16);
     doc.text("ABU BAKR TRADERS", 14, 15);
     doc.setFontSize(12);
     doc.text(`Supplier Ledger Report: ${supplierName}`, 14, 22);
     doc.setFontSize(10);
-    doc.text(`Period: ${selectedMonth === "ALL" ? "All Time" : selectedMonth} | Generated On: ${new Date().toLocaleDateString()}`, 14, 28);
+    doc.text(
+      `Period: ${selectedMonth === "ALL" ? "All Time" : selectedMonth} ${searchTerm ? `| Filter: ${searchTerm}` : ""} | Generated On: ${new Date().toLocaleDateString()}`,
+      14,
+      28
+    );
 
-    const tableColumn = ["Date", "Invoice No", "Vehicle No", "Description", "Tons", "Debit (Paid)", "Credit (Purchase)", "Balance"];
+    const tableColumn = [
+      "Date",
+      "Invoice No",
+      "Vehicle No",
+      "Booking Area",
+      "Description",
+      "Tons",
+      "Debit (Paid)",
+      "Credit (Purchase)",
+      "Balance",
+    ];
     const tableRows: any[] = [];
 
     if (selectedMonth !== "ALL" && selectedMonth !== "") {
       tableRows.push([
         "Opening Balance",
+        "-",
         "-",
         "-",
         "Brought forward from previous months",
@@ -155,22 +168,22 @@ export default function SupplierLedgerPage() {
     }
 
     entriesWithBalance.forEach((entry) => {
-      const rowData = [
+      tableRows.push([
         entry.transaction_date,
         entry.invoice_number || "-",
         entry.vehicle_number || "-",
+        entry.booking_area || "-",
         entry.description,
         entry.tons > 0 ? entry.tons.toFixed(2) : "-",
         entry.debit > 0 ? Number(entry.debit).toLocaleString() : "-",
         entry.credit > 0 ? Number(entry.credit).toLocaleString() : "-",
         entry.balance.toLocaleString(),
-      ];
-      tableRows.push(rowData);
+      ]);
     });
 
-    // Total Row with Tons
     tableRows.push([
       "CLOSING TOTAL",
+      "",
       "",
       "",
       "",
@@ -186,7 +199,6 @@ export default function SupplierLedgerPage() {
       startY: 34,
       styles: { fontSize: 8 },
       headStyles: { fillColor: [41, 128, 185] },
-      footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
     });
 
     doc.save(`${supplierName}_Ledger_${selectedMonth || "ALL"}.pdf`);
@@ -198,9 +210,11 @@ export default function SupplierLedgerPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-blue-600" /> Supplier Ledger
+            <BookOpen className="w-6 h-6 text-blue-600" /> Supplier Vehicle-wise Ledger (Month-wise)
           </h1>
-         
+          <p className="text-sm text-slate-500">
+            Track month-wise vehicle purchases, booking areas, total tonnage, and running balances.
+          </p>
         </div>
         {selectedSupplierId && (
           <button
@@ -252,13 +266,13 @@ export default function SupplierLedgerPage() {
 
         <div>
           <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">
-            Search Ledger
+            Search Ledger (Area, Vehicle, Invoice)
           </label>
           <div className="relative">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Search vehicle no, invoice..."
+              placeholder="Search Phalia, vehicle no, invoice..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               disabled={!selectedSupplierId}
@@ -277,6 +291,7 @@ export default function SupplierLedgerPage() {
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Invoice No</th>
                 <th className="px-4 py-3">Vehicle No</th>
+                <th className="px-4 py-3">Booking Area</th>
                 <th className="px-4 py-3">Description</th>
                 <th className="px-4 py-3 text-right">Tons</th>
                 <th className="px-4 py-3 text-right">Debit (Paid)</th>
@@ -287,22 +302,21 @@ export default function SupplierLedgerPage() {
             <tbody className="divide-y divide-slate-200">
               {!selectedSupplierId ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
+                  <td colSpan={9} className="px-4 py-12 text-center text-slate-400">
                     Please select a supplier above to view their ledger history.
                   </td>
                 </tr>
               ) : loading ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-slate-500">
+                  <td colSpan={9} className="px-4 py-12 text-center text-slate-500">
                     Loading ledger entries...
                   </td>
                 </tr>
               ) : (
                 <>
-                  {/* Opening Balance Row */}
                   {selectedMonth !== "ALL" && selectedMonth !== "" && (
                     <tr className="bg-slate-50 font-semibold text-slate-700">
-                      <td colSpan={7} className="px-4 py-3 text-right uppercase text-xs">
+                      <td colSpan={8} className="px-4 py-3 text-right uppercase text-xs">
                         Opening Balance (Brought Forward):
                       </td>
                       <td className="px-4 py-3 text-right text-slate-900">
@@ -313,8 +327,8 @@ export default function SupplierLedgerPage() {
 
                   {entriesWithBalance.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
-                        No transactions found for this month.
+                      <td colSpan={9} className="px-4 py-8 text-center text-slate-400">
+                        No transactions found for this filter.
                       </td>
                     </tr>
                   ) : (
@@ -330,6 +344,15 @@ export default function SupplierLedgerPage() {
                           {entry.vehicle_number ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-md text-xs font-bold uppercase">
                               <Truck className="w-3 h-3" /> {entry.vehicle_number}
+                            </span>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {entry.booking_area ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md text-xs font-semibold">
+                              <MapPin className="w-3 h-3" /> {entry.booking_area}
                             </span>
                           ) : (
                             "-"
@@ -359,7 +382,7 @@ export default function SupplierLedgerPage() {
             {selectedSupplierId && (
               <tfoot className="bg-slate-100 font-bold text-slate-800 border-t-2 border-slate-300">
                 <tr>
-                  <td colSpan={4} className="px-4 py-3 text-right uppercase text-xs tracking-wider">
+                  <td colSpan={5} className="px-4 py-3 text-right uppercase text-xs tracking-wider">
                     Closing Total:
                   </td>
                   <td className="px-4 py-3 text-right text-indigo-700 whitespace-nowrap">

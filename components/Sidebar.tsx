@@ -117,6 +117,14 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
                 >
                   Manage Bank Accounts
                 </Link>
+
+                <Link
+                  href="/purchases/areas"
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/purchases/areas' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                >
+                  Manage Booking Areas
+                </Link>
               </div>
             )}
           </div>

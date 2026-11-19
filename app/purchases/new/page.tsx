@@ -14,17 +14,24 @@ interface Product {
   name: string;
 }
 
+interface BookingArea {
+  id: string;
+  name: string;
+}
+
 interface VehicleRow {
   id: string;
   vehicle_number: string;
+  booking_area: string;
   product_id: string;
-  unit_price: string; // Rate per Ton
-  quantity: string;   // Quantity in Tons
+  unit_price: string;
+  quantity: string;
 }
 
 export default function NewPurchasePage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [areas, setAreas] = useState<BookingArea[]>([]);
   const [loading, setLoading] = useState(false);
 
   const [purchaseDate, setPurchaseDate] = useState("");
@@ -32,19 +39,21 @@ export default function NewPurchasePage() {
   const [invoiceNumber, setInvoiceNumber] = useState("");
 
   const [rows, setRows] = useState<VehicleRow[]>([
-    { id: "1", vehicle_number: "", product_id: "", unit_price: "", quantity: "" },
+    { id: "1", vehicle_number: "", booking_area: "", product_id: "", unit_price: "", quantity: "" },
   ]);
 
   useEffect(() => {
     setPurchaseDate(new Date().toISOString().split("T")[0]);
 
     const fetchInitialData = async () => {
-      const [supRes, prodRes] = await Promise.all([
+      const [supRes, prodRes, areaRes] = await Promise.all([
         supabase.from("suppliers").select("id, name").order("name"),
         supabase.from("products").select("id, name").order("name"),
+        supabase.from("booking_areas").select("id, name").order("name"),
       ]);
       if (supRes.data) setSuppliers(supRes.data);
       if (prodRes.data) setProducts(prodRes.data);
+      if (areaRes.data) setAreas(areaRes.data);
     };
     fetchInitialData();
   }, []);
@@ -52,7 +61,7 @@ export default function NewPurchasePage() {
   const addRow = () => {
     setRows((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), vehicle_number: "", product_id: "", unit_price: "", quantity: "" },
+      { id: crypto.randomUUID(), vehicle_number: "", booking_area: "", product_id: "", unit_price: "", quantity: "" },
     ]);
   };
 
@@ -85,17 +94,23 @@ export default function NewPurchasePage() {
 
     const validItems = rows.map((r) => ({
       vehicle_number: r.vehicle_number.trim(),
+      booking_area: r.booking_area,
       product_id: r.product_id,
       unit_price: parseFloat(r.unit_price),
-      quantity: parseFloat(r.quantity), // Tons
+      quantity: parseFloat(r.quantity),
     }));
 
     const hasInvalid = validItems.some(
-      (item) => !item.vehicle_number || !item.product_id || isNaN(item.unit_price) || item.quantity <= 0
+      (item) =>
+        !item.vehicle_number ||
+        !item.booking_area ||
+        !item.product_id ||
+        isNaN(item.unit_price) ||
+        item.quantity <= 0
     );
 
     if (hasInvalid) {
-      alert("Please fill all vehicle details properly (Vehicle No, Product, Rate/Ton, and Tons > 0).");
+      alert("Please fill all vehicle details properly (Vehicle No, Booking Area, Product, Rate/Ton, and Tons > 0).");
       return;
     }
 
@@ -110,10 +125,10 @@ export default function NewPurchasePage() {
 
       if (error) throw error;
 
-      alert("Purchase saved successfully! Stock automatically updated in Bags (Tons × 20) and Ledger updated in Tons.");
-      
+      alert("Purchase saved successfully! Stock updated in Bags and Ledger updated with Booking Area.");
+
       setInvoiceNumber("");
-      setRows([{ id: "1", vehicle_number: "", product_id: "", unit_price: "", quantity: "" }]);
+      setRows([{ id: "1", vehicle_number: "", booking_area: "", product_id: "", unit_price: "", quantity: "" }]);
     } catch (err: any) {
       alert("Error saving purchase: " + err.message);
     } finally {
@@ -122,12 +137,12 @@ export default function NewPurchasePage() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between border-b pb-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Company Purchase Entry (Tons to Bags)</h1>
           <p className="text-sm text-slate-500">
-            Enter vehicle purchase in Tons. Stock will automatically increase in Bags (1 Ton = 20 Bags).
+            Enter vehicle purchase with booking area in Tons. Stock automatically updates in Bags (1 Ton = 20 Bags).
           </p>
         </div>
       </div>
@@ -203,6 +218,7 @@ export default function NewPurchasePage() {
                 <tr>
                   <th className="px-4 py-3">#</th>
                   <th className="px-4 py-3">Vehicle Number</th>
+                  <th className="px-4 py-3">Booking Area</th>
                   <th className="px-4 py-3">Product</th>
                   <th className="px-4 py-3 text-right">Rate / Ton (Rs)</th>
                   <th className="px-4 py-3 text-right">Quantity (Tons)</th>
@@ -224,15 +240,30 @@ export default function NewPurchasePage() {
                           placeholder="e.g. C 3483"
                           value={row.vehicle_number}
                           onChange={(e) => updateRow(row.id, "vehicle_number", e.target.value)}
-                          className="w-32 px-2.5 py-1.5 border border-slate-300 rounded-md uppercase focus:ring-2 focus:ring-blue-500 outline-none"
+                          className="w-28 px-2.5 py-1.5 border border-slate-300 rounded-md uppercase focus:ring-2 focus:ring-blue-500 outline-none"
                         />
+                      </td>
+                      <td className="px-4 py-3">
+                        <select
+                          required
+                          value={row.booking_area}
+                          onChange={(e) => updateRow(row.id, "booking_area", e.target.value)}
+                          className="w-40 px-2.5 py-1.5 border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                        >
+                          <option value="">-- Select Area --</option>
+                          {areas.map((a) => (
+                            <option key={a.id} value={a.name}>
+                              {a.name}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td className="px-4 py-3">
                         <select
                           required
                           value={row.product_id}
                           onChange={(e) => updateRow(row.id, "product_id", e.target.value)}
-                          className="w-52 px-2.5 py-1.5 border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                          className="w-44 px-2.5 py-1.5 border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500 outline-none"
                         >
                           <option value="">-- Select Product --</option>
                           {products.map((p) => (
@@ -261,7 +292,7 @@ export default function NewPurchasePage() {
                           placeholder="0"
                           value={row.quantity}
                           onChange={(e) => updateRow(row.id, "quantity", e.target.value)}
-                          className="w-28 px-2.5 py-1.5 border border-slate-300 rounded-md text-right focus:ring-2 focus:ring-blue-500 outline-none"
+                          className="w-24 px-2.5 py-1.5 border border-slate-300 rounded-md text-right focus:ring-2 focus:ring-blue-500 outline-none"
                         />
                         {totalBags > 0 && (
                           <div className="text-[11px] text-blue-600 font-medium mt-1">
@@ -288,7 +319,7 @@ export default function NewPurchasePage() {
               </tbody>
               <tfoot className="bg-slate-100 font-bold text-slate-800 border-t-2 border-slate-300">
                 <tr>
-                  <td colSpan={5} className="px-4 py-3 text-right uppercase text-xs tracking-wider">
+                  <td colSpan={6} className="px-4 py-3 text-right uppercase text-xs tracking-wider">
                     Total Invoice Amount:
                   </td>
                   <td className="px-4 py-3 text-right text-base text-blue-700">
