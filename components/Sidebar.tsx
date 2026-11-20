@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {ShoppingCart, FileText, RotateCcwClock} from "lucide-react";
+import {ShoppingCart, FileText,Wallet, RotateCcwClock} from "lucide-react";
 
 
 export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: (val: boolean) => void }) {
@@ -178,6 +178,45 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
             )}
           </div>
 
+
+
+            {/*Sale Transactions */}
+          <div>
+            <button
+              onClick={() => toggleSection('sale')}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors cursor-pointer"
+            >
+              <span className="flex items-center gap-3">
+                <Wallet className='w-4 h-4 text-slate-500' />
+                <span>Customer Transactions</span>
+              </span>
+              <span className="text-xs text-slate-500">{openSection === 'sale' ? '▲' : '▼'}</span>
+            </button>
+            
+            {openSection === 'sale' && (
+              <div className="pl-7 mt-1 space-y-1 border-l-2 border-slate-800 ml-4">
+                <Link
+                  href="/sales/new"
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/sales/new' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                >
+                  Sale Transaction
+                </Link>
+
+                    <Link
+                  href="/sales/invoice"
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/sales/invoice' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                >
+                   Sales Invoice
+                </Link>
+              </div>
+            )}
+          </div>
+
+
+
+
             {/*Reverse Transactions */}
           <div>
             <button
@@ -281,6 +320,14 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
                 >
                   Supplier Account
                 </Link>
+
+                 <Link
+                  href="/accounts/customers"
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/accounts/customers' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                >
+                  Customer Account
+                </Link>
                <Link
                   href="/accounts/banks"
                   onClick={() => setIsOpen(false)}
@@ -308,7 +355,7 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
             >
               <span className="flex items-center gap-3">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                <span>Reports & Balances</span>
+                <span>Ledgers</span>
               </span>
               <span className="text-xs text-slate-500">{openSection === 'reports' ? '▲' : '▼'}</span>
             </button>
@@ -322,7 +369,13 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
                 >
                   Supplier Ledger
                 </Link>
-                
+                 <Link
+                  href="/customers/ledger"
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/customers/ledger' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                >
+                  Customer Ledger
+                </Link>
               </div>
             )}
           </div>
