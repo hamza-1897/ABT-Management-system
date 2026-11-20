@@ -21,7 +21,8 @@ interface SupplierSummary {
   name: string;
   phone?: string;
   city?: string;
-  total_purchase: number; // Credit
+  opening_balance?: number;
+  total_purchase: number; // Credit + Opening
   total_payment: number;  // Debit
   closing_balance: number;
 }
@@ -38,37 +39,45 @@ export default function SupplierAccountsPage() {
   const fetchSupplierBalances = async () => {
     setLoading(true);
     try {
-      // 1. Saare suppliers fetch karein
       const { data: suppliersData, error: supError } = await supabase
         .from("suppliers")
-        .select("id, name")
+        .select("id, name, opening_balance")
         .order("name", { ascending: true });
 
       if (supError) throw supError;
 
-      // 2. Saari supplier_ledger entries fetch karein
       const { data: ledgerData, error: ledError } = await supabase
         .from("supplier_ledger")
-        .select("supplier_id, debit, credit");
+        .select("supplier_id, invoice_number, debit, credit");
 
       if (ledError) throw ledError;
+const computedList: SupplierSummary[] = (suppliersData || []).map((sup: any) => {
+  const supEntries = (ledgerData || []).filter((l: any) => l.supplier_id === sup.id);
 
-      // 3. Har supplier ke hisab se totals calculate karein
-      const computedList: SupplierSummary[] = (suppliersData || []).map((sup) => {
-        const supEntries = (ledgerData || []).filter((l) => l.supplier_id === sup.id);
+  const ledgerCredit = supEntries.reduce((sum, item) => sum + (Number(item.credit) || 0), 0);
+  const ledgerDebit = supEntries.reduce((sum, item) => sum + (Number(item.debit) || 0), 0);
 
-        const totalPurchase = supEntries.reduce((sum, item) => sum + (Number(item.credit) || 0), 0);
-        const totalPayment = supEntries.reduce((sum, item) => sum + (Number(item.debit) || 0), 0);
-        const closingBalance = totalPurchase - totalPayment;
+  const hasOpeningRow = supEntries.some((item: any) => item.invoice_number === "OPENING-BAL");
+  const openingBal = hasOpeningRow ? 0 : (Number(sup.opening_balance) || 0);
 
-        return {
-          id: sup.id,
-          name: sup.name,
-          total_purchase: totalPurchase,
-          total_payment: totalPayment,
-          closing_balance: closingBalance,
-        };
-      });
+  // Opening + Credit (agar negative hai toh negative rahega)
+  const totalPurchase = ledgerCredit + openingBal;
+  const totalPayment = ledgerDebit;
+
+  // Agar totalPurchase negative hai (payable), toh payment (debit) add karke negative ko kam karein;
+  // warna normal (totalPurchase - totalPayment) rakhein.
+  const closingBalance =
+    totalPurchase < 0 ? totalPurchase + totalPayment : totalPurchase - totalPayment;
+
+  return {
+    id: sup.id,
+    name: sup.name,
+    opening_balance: Number(sup.opening_balance) || 0,
+    total_purchase: totalPurchase,
+    total_payment: totalPayment,
+    closing_balance: closingBalance,
+  };
+});
 
       setSummaries(computedList);
     } catch (err: any) {
@@ -78,17 +87,14 @@ export default function SupplierAccountsPage() {
     }
   };
 
-  // Search filter
   const filteredSuppliers = summaries.filter((s) =>
     s.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Grand Totals for Footer & Summary Cards
   const grandTotalPurchase = filteredSuppliers.reduce((sum, s) => sum + s.total_purchase, 0);
   const grandTotalPayment = filteredSuppliers.reduce((sum, s) => sum + s.total_payment, 0);
   const grandClosingBalance = filteredSuppliers.reduce((sum, s) => sum + s.closing_balance, 0);
 
-  // PDF Export Function
   const downloadPDF = () => {
     const doc = new jsPDF();
 
@@ -106,19 +112,14 @@ export default function SupplierAccountsPage() {
       "Total Payment (Debit)",
       "Closing Balance (Payable)",
     ];
-    const tableRows: any[] = [];
+    const tableRows: any[] = filteredSuppliers.map((sup, index) => [
+      index + 1,
+      sup.name,
+      sup.total_purchase.toLocaleString("en-PK", { minimumFractionDigits: 2 }),
+      sup.total_payment.toLocaleString("en-PK", { minimumFractionDigits: 2 }),
+      sup.closing_balance.toLocaleString("en-PK", { minimumFractionDigits: 2 }),
+    ]);
 
-    filteredSuppliers.forEach((sup, index) => {
-      tableRows.push([
-        index + 1,
-        sup.name,
-        sup.total_purchase.toLocaleString("en-PK", { minimumFractionDigits: 2 }),
-        sup.total_payment.toLocaleString("en-PK", { minimumFractionDigits: 2 }),
-        sup.closing_balance.toLocaleString("en-PK", { minimumFractionDigits: 2 }),
-      ]);
-    });
-
-    // Grand Total Row
     tableRows.push([
       "",
       "GRAND TOTAL",
@@ -158,7 +159,7 @@ export default function SupplierAccountsPage() {
         <button
           onClick={downloadPDF}
           disabled={filteredSuppliers.length === 0}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition shadow-sm w-fit disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition shadow-sm w-fit disabled:opacity-50 cursor-pointer"
         >
           <Download className="w-4 h-4" /> Export Balances PDF
         </button>
@@ -190,7 +191,7 @@ export default function SupplierAccountsPage() {
           </p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-blue-200  shadow-sm">
+        <div className="bg-white p-5 rounded-xl border border-blue-200 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-blue-700 uppercase">Net Closing Payable</span>
             <span className="p-2 bg-blue-100 text-blue-700 rounded-lg">
@@ -252,9 +253,16 @@ export default function SupplierAccountsPage() {
                   <tr key={sup.id} className="hover:bg-slate-50 transition">
                     <td className="px-4 py-3 text-slate-500 font-medium">{index + 1}</td>
                     <td className="px-4 py-3 font-bold text-slate-800">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-blue-600" />
-                        {sup.name}
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="w-4 h-4 text-blue-600" />
+                          <span>{sup.name}</span>
+                        </div>
+                        {(sup.opening_balance || 0) > 0 && (
+                          <span className="text-[11px] font-medium text-slate-500 pl-6">
+                            Includes Opening: Rs. {Number(sup.opening_balance).toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right font-medium text-amber-600">
@@ -288,7 +296,6 @@ export default function SupplierAccountsPage() {
                 ))
               )}
             </tbody>
-            {/* Monetary Totals Footer */}
             {filteredSuppliers.length > 0 && (
               <tfoot className="bg-slate-100 font-bold text-slate-800 border-t-2 border-slate-300">
                 <tr>

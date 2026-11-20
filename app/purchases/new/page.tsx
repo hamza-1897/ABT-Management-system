@@ -12,6 +12,7 @@ interface Supplier {
 interface Product {
   id: string;
   name: string;
+  bags_per_ton: number;
 }
 
 interface BookingArea {
@@ -48,7 +49,7 @@ export default function NewPurchasePage() {
     const fetchInitialData = async () => {
       const [supRes, prodRes, areaRes] = await Promise.all([
         supabase.from("suppliers").select("id, name").order("name"),
-        supabase.from("products").select("id, name").order("name"),
+        supabase.from("products").select("id, name, bags_per_ton").order("name"),
         supabase.from("booking_areas").select("id, name").order("name"),
       ]);
       if (supRes.data) setSuppliers(supRes.data);
@@ -125,7 +126,7 @@ export default function NewPurchasePage() {
 
       if (error) throw error;
 
-      alert("Purchase saved successfully! Stock updated in Bags and Ledger updated with Booking Area.");
+      alert("Purchase saved successfully! Stock automatically updated in Bags based on product conversion.");
 
       setInvoiceNumber("");
       setRows([{ id: "1", vehicle_number: "", booking_area: "", product_id: "", unit_price: "", quantity: "" }]);
@@ -142,7 +143,7 @@ export default function NewPurchasePage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Company Purchase Entry (Tons to Bags)</h1>
           <p className="text-sm text-slate-500">
-            Enter vehicle purchase with booking area in Tons. Stock automatically updates in Bags (1 Ton = 20 Bags).
+            Enter vehicle purchase in Tons. Stock automatically converts to Bags based on each product&apos;s bag weight (e.g. 20, 25, or 50 bags/ton).
           </p>
         </div>
       </div>
@@ -229,7 +230,10 @@ export default function NewPurchasePage() {
               <tbody className="divide-y divide-slate-200">
                 {rows.map((row, index) => {
                   const netAmount = calculateRowNet(row);
-                  const totalBags = (parseFloat(row.quantity) || 0) * 20;
+                  const selectedProduct = products.find((p) => p.id === row.product_id);
+                  const bagsPerTon = selectedProduct?.bags_per_ton || 20;
+                  const totalBags = (parseFloat(row.quantity) || 0) * bagsPerTon;
+
                   return (
                     <tr key={row.id} className="hover:bg-slate-50">
                       <td className="px-4 py-3 font-medium text-slate-500">{index + 1}</td>
@@ -263,12 +267,12 @@ export default function NewPurchasePage() {
                           required
                           value={row.product_id}
                           onChange={(e) => updateRow(row.id, "product_id", e.target.value)}
-                          className="w-44 px-2.5 py-1.5 border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                          className="w-48 px-2.5 py-1.5 border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500 outline-none"
                         >
                           <option value="">-- Select Product --</option>
                           {products.map((p) => (
                             <option key={p.id} value={p.id}>
-                              {p.name}
+                              {p.name} ({p.bags_per_ton || 20} Bags/T)
                             </option>
                           ))}
                         </select>
@@ -296,7 +300,7 @@ export default function NewPurchasePage() {
                         />
                         {totalBags > 0 && (
                           <div className="text-[11px] text-blue-600 font-medium mt-1">
-                            = {totalBags} Bags
+                            = {totalBags} Bags ({bagsPerTon}/T)
                           </div>
                         )}
                       </td>

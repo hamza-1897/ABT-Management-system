@@ -167,9 +167,9 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
                 </Link>
 
                 <Link
-                  href="/transfers/cash-to-bank"
+                  href="/purchases/payments"
                   onClick={() => setIsOpen(false)}
-                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/transfers/cash-to-bank' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/purchases/payments' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
                 >
                   Supplier Payments
                 </Link>
@@ -199,6 +199,14 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
                   className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/reversals/purchase' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
                 >
                   Purchase Reversals
+                </Link>
+
+                    <Link
+                  href="/reversals/payments"
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/reversals/payments' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                >
+                   Booking Reversals
                 </Link>
               </div>
             )}
@@ -272,6 +280,21 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
                   className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/accounts/suppliers' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
                 >
                   Supplier Account
+                </Link>
+               <Link
+                  href="/accounts/banks"
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/accounts/banks' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                >
+                  Banks Account
+                </Link>
+
+               <Link
+                  href="/accounts/cash"
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-xs transition-colors ${pathname === '/accounts/cash' ? 'bg-blue-600/30 text-blue-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                >
+                  Cash Account
                 </Link>
               </div>
             )}
