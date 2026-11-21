@@ -1,15 +1,23 @@
 'use client';
 
 import { useState } from 'react';
+
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import React, { Suspense } from "react";
+import { usePathname } from "next/navigation";
 import {ShoppingCart, FileText,Wallet, RotateCcwClock} from "lucide-react";
 
 
-export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: (val: boolean) => void }) {
+function SidebarContent({
+  isOpen,
+  setIsOpen,
+}: {
+  isOpen: boolean;
+  setIsOpen: (val: boolean) => void;
+}) {
   const pathname = usePathname();
 
-  // Collapsible sections state
+  // collapsible sections state
   const [openSection, setOpenSection] = useState<string | null>('');
 
   const toggleSection = (section: string) => {
@@ -20,16 +28,16 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
     <>
       {/* Mobile Backdrop */}
       {isOpen && (
-        <div 
-          onClick={() => setIsOpen(false)} 
+        <div
+          onClick={() => setIsOpen(false)}
           className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 lg:hidden"
         />
       )}
 
       {/* Sidebar Container */}
-      <aside 
-        className={`fixed top-0 left-0 bottom-0 z-50 w-64 bg-slate-900 text-slate-300 flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
+      <aside
+        className={`fixed top-0 left-0 bottom-0 z-50 w-64 bg-slate-900 text-slate-300 flex flex-col transition-transform duration-200 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
         {/* Brand Logo & Name */}
@@ -394,7 +402,21 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
             </div>
           </div>
         </div>
-      </aside>
+    </aside>
     </>
+  );
+}
+
+export default function Sidebar({
+  isOpen,
+  setIsOpen,
+}: {
+  isOpen: boolean;
+  setIsOpen: (val: boolean) => void;
+}) {
+  return (
+    <Suspense fallback={null}>
+      <SidebarContent isOpen={isOpen} setIsOpen={setIsOpen} />
+    </Suspense>
   );
 }

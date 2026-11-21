@@ -1,203 +1,164 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
-import { useSearchParams } from "next/navigation";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Search, Eye } from "lucide-react";
+import Link from "next/link";
 
-interface CustomerOption {
+interface CustomerLedgerListRow {
   id: string;
   name: string;
   short_code?: string | null;
   code?: string | null;
-  opening_balance?: number | null;
+  market?: string | null;
+  closing_balance: number; // Negative (-) = customer ne dena hai
 }
 
-interface LedgerEntry {
-  id: string;
-  transaction_date: string;
-  invoice_number?: string | null;
-  vehicle_number?: string | null;
-  description?: string | null;
-  debit: number;
-  credit: number;
-}
-
-function CustomerLedgerContent() {
-  const searchParams = useSearchParams();
-  const initialCustomerId = searchParams.get("customerId") || "";
-
-  const [customers, setCustomers] = useState<CustomerOption[]>([]);
-  const [selectedCustomerId, setSelectedCustomerId] = useState(initialCustomerId);
-  const [entries, setEntries] = useState<LedgerEntry[]>([]);
-  const [loading, setLoading] = useState(false);
+export default function LedgerCustomersListPage() {
+  const [customers, setCustomers] = useState<CustomerLedgerListRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    loadCustomers();
+    loadCustomersWithBalance();
   }, []);
 
-  useEffect(() => {
-    if (initialCustomerId) {
-      setSelectedCustomerId(initialCustomerId);
-    }
-  }, [initialCustomerId]);
-
-  useEffect(() => {
-    if (selectedCustomerId) {
-      loadLedger(selectedCustomerId);
-    } else {
-      setEntries([]);
-    }
-  }, [selectedCustomerId]);
-
-  const loadCustomers = async () => {
-    const { data } = await supabase
-      .from("customers")
-      .select("id, name, short_code, code, opening_balance")
-      .eq("is_active", true)
-      .order("name", { ascending: true });
-
-    const list = (data as CustomerOption[]) || [];
-    setCustomers(list);
-    if (!initialCustomerId && list.length > 0) {
-      setSelectedCustomerId(list[0].id);
-    }
-  };
-
-  const loadLedger = async (customerId: string) => {
+  const loadCustomersWithBalance = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("customer_ledger")
-      .select("id, transaction_date, invoice_number, vehicle_number, description, debit, credit")
-      .eq("customer_id", customerId)
-      .order("transaction_date", { ascending: true })
-      .order("created_at", { ascending: true });
+    try {
+      const [custRes, ledRes] = await Promise.all([
+        supabase
+          .from("customers")
+          .select("id, name, short_code, code, market, opening_balance")
+          .eq("is_active", true)
+          .order("name", { ascending: true }),
+        supabase
+          .from("customer_ledger")
+          .select("customer_id, debit, credit"),
+      ]);
 
-    setEntries((data as LedgerEntry[]) || []);
-    setLoading(false);
+      if (custRes.error) throw custRes.error;
+      if (ledRes.error) throw ledRes.error;
+
+      const custData = custRes.data || [];
+      const ledData = ledRes.data || [];
+
+      const computed: CustomerLedgerListRow[] = custData.map((c: any) => {
+        const entries = ledData.filter((l: any) => l.customer_id === c.id);
+        const debit = entries.reduce((s, r) => s + (Number(r.debit) || 0), 0);
+        const credit = entries.reduce((s, r) => s + (Number(r.credit) || 0), 0);
+        const opening = Number(c.opening_balance) || 0;
+
+        // Negative (-) = customer ne dena hai
+        const totalSale = -(opening + debit);
+        const closingBalance = Number((totalSale + credit).toFixed(2));
+
+        return {
+          id: c.id,
+          name: c.name,
+          short_code: c.short_code,
+          code: c.code,
+          market: c.market,
+          closing_balance: closingBalance,
+        };
+      });
+
+      setCustomers(computed);
+    } catch (err: any) {
+      console.error("Error loading customer ledger list:", err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const selectedCustomer = useMemo(
-    () => customers.find((c) => c.id === selectedCustomerId) || null,
-    [customers, selectedCustomerId]
-  );
-
-  // Running balance: negative (-) = customer ne dena hai
-  const ledgerWithBalance = useMemo(() => {
-    let running = -(Number(selectedCustomer?.opening_balance) || 0);
-    return entries.map((e) => {
-      const billDelta = -(Number(e.debit) || 0);
-      const cashDelta = Number(e.credit) || 0;
-      running = Number((running + billDelta + cashDelta).toFixed(2));
-      return {
-        ...e,
-        billDelta,
-        cashDelta,
-        runningBalance: running,
-      };
-    });
-  }, [entries, selectedCustomer]);
-
-  const finalBalance =
-    ledgerWithBalance.length > 0
-      ? ledgerWithBalance[ledgerWithBalance.length - 1].runningBalance
-      : -(Number(selectedCustomer?.opening_balance) || 0);
+  const filteredCustomers = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return customers;
+    return customers.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.short_code && c.short_code.toLowerCase().includes(q)) ||
+        (c.code && c.code.toLowerCase().includes(q)) ||
+        (c.market && c.market.toLowerCase().includes(q)) ||
+        String(c.closing_balance).includes(q)
+    );
+  }, [customers, searchQuery]);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-5 text-slate-800">
-      {/* Header + Customer Selector */}
+    <div className="p-6 max-w-6xl mx-auto space-y-4 text-slate-800">
+      {/* Header + Search */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
         <div>
           <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-blue-600" /> Customer Ledger
+            <BookOpen className="w-5 h-5 text-blue-600" /> Customer Khata — Select Customer
           </h1>
           <p className="text-xs text-slate-500">
-            Negative (-) balance means customer has to pay.
+            Negative (-) balance means customer has to pay. Click View for full ledger.
           </p>
         </div>
 
-        <select
-          value={selectedCustomerId}
-          onChange={(e) => setSelectedCustomerId(e.target.value)}
-          className="px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg outline-none focus:border-blue-500 min-w-[240px]"
-        >
-          <option value="">Select customer...</option>
-          {customers.map((c) => {
-            const code = c.short_code || c.code;
-            return (
-              <option key={c.id} value={c.id}>
-                {code ? `${code} - ${c.name}` : c.name}
-              </option>
-            );
-          })}
-        </select>
+        <div className="relative w-full sm:w-72">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+          <input
+            type="text"
+            placeholder="Search name, code, market, balance..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-300 rounded-lg outline-none focus:border-blue-500"
+          />
+        </div>
       </div>
 
-      {/* Current Closing Balance Strip */}
-      {selectedCustomer && (
-        <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center justify-between">
-          <span className="font-bold text-slate-800">{selectedCustomer.name}</span>
-          <span
-            className={`text-base font-bold ${
-              finalBalance < 0 ? "text-rose-700" : "text-emerald-700"
-            }`}
-          >
-            Closing Balance: Rs. {finalBalance.toLocaleString("en-PK", { minimumFractionDigits: 2 })}
-          </span>
-        </div>
-      )}
-
-      {/* Ledger Table */}
+      {/* Customers Table */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="bg-slate-100 text-slate-600 text-xs uppercase border-b border-slate-200">
               <tr>
-                <th className="px-4 py-2.5">Date</th>
-                <th className="px-4 py-2.5">Invoice #</th>
-                <th className="px-4 py-2.5">Vehicle #</th>
-                <th className="px-4 py-2.5">Description</th>
-                <th className="px-4 py-2.5 text-right">Bill (-)</th>
-                <th className="px-4 py-2.5 text-right">Cash (+)</th>
-                <th className="px-4 py-2.5 text-right">Balance</th>
+                <th className="px-4 py-2.5 w-12">#</th>
+                <th className="px-4 py-2.5">Code</th>
+                <th className="px-4 py-2.5">Customer Name</th>
+                <th className="px-4 py-2.5">Market</th>
+                <th className="px-4 py-2.5 text-right">Closing Balance</th>
+                <th className="px-4 py-2.5 text-center w-28">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
-                    Loading ledger...
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                    Loading customers...
                   </td>
                 </tr>
-              ) : ledgerWithBalance.length === 0 ? (
+              ) : filteredCustomers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
-                    No ledger entries for this customer.
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                    No customer found.
                   </td>
                 </tr>
               ) : (
-                ledgerWithBalance.map((row) => (
-                  <tr key={row.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{row.transaction_date}</td>
-                    <td className="px-4 py-2.5 font-medium">{row.invoice_number || "-"}</td>
-                    <td className="px-4 py-2.5 text-slate-700">{row.vehicle_number || "-"}</td>
-                    <td className="px-4 py-2.5 text-slate-600">{row.description || "-"}</td>
-                    <td className="px-4 py-2.5 text-right font-semibold text-rose-700">
-                      {row.billDelta < 0
-                        ? row.billDelta.toLocaleString("en-PK", { minimumFractionDigits: 2 })
-                        : "-"}
+                filteredCustomers.map((c, idx) => (
+                  <tr key={c.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-2.5 text-slate-400">{idx + 1}</td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-slate-600">
+                      {c.short_code || c.code || "-"}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-semibold text-emerald-700">
-                      {row.cashDelta > 0
-                        ? `+${row.cashDelta.toLocaleString("en-PK", { minimumFractionDigits: 2 })}`
-                        : "-"}
-                    </td>
+                    <td className="px-4 py-2.5 font-bold text-slate-900">{c.name}</td>
+                    <td className="px-4 py-2.5 text-slate-600">{c.market || "-"}</td>
                     <td
                       className={`px-4 py-2.5 text-right font-bold ${
-                        row.runningBalance < 0 ? "text-rose-700" : "text-emerald-700"
+                        c.closing_balance < 0 ? "text-rose-700" : "text-emerald-700"
                       }`}
                     >
-                      Rs. {row.runningBalance.toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                      Rs. {c.closing_balance.toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-4 py-2.5 text-center">
+                      <Link
+                        href={`/customers/ledger/${c.id}`}
+                        className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-md"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> View
+                      </Link>
                     </td>
                   </tr>
                 ))
@@ -207,13 +168,5 @@ function CustomerLedgerContent() {
         </div>
       </div>
     </div>
-  );
-}
-
-export default function CustomerLedgerPage() {
-  return (
-    <Suspense fallback={<div className="p-6 text-sm text-slate-400">Loading ledger...</div>}>
-      <CustomerLedgerContent />
-    </Suspense>
   );
 }
